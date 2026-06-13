@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rock Mesh Generator</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #080a0c;
+            color: #e0e6ed;
+            user-select: none;
+        }
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        .ui-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(10, 13, 16, 0.92);
+            padding: 22px;
+            border-radius: 16px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.8);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255,255,255,0.06);
+            width: 320px;
+            box-sizing: border-box;
+            z-index: 10;
+        }
+        h2 {
+            margin-top: 0;
+            font-size: 1.2rem;
+            text-align: center;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            padding-bottom: 12px;
+            color: #66bb6a;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+        }
+        .control-group {
+            margin-bottom: 14px;
+        }
+        label {
+            display: block;
+            font-size: 0.8rem;
+            color: #90a4ae;
+            margin-bottom: 4px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        input[type="range"], select {
+            width: 100%;
+            background: #12161a;
+            border: 1px solid #263238;
+            color: #fff;
+            padding: 8px;
+            border-radius: 6px;
+            box-sizing: border-box;
+            outline: none;
+        }
+        input[type="range"] {
+            accent-color: #4caf50;
+            height: 5px;
+        }
+        .scale-inputs {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .scale-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .scale-row label {
+            margin-bottom: 0;
+            width: 80px;
+        }
+        .scale-row input {
+            width: calc(100% - 85px);
+        }
+        .btn-container {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            color: white;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+        }
+        #generateBtn { background: #2e7d32; }
+        #generateBtn:hover { background: #388e3c; }
+        #exportBtn { background: #0277bd; }
+        #exportBtn:hover { background: #0288d1; }
+        #resetCamBtn { background: #546e7a; }
+        #resetCamBtn:hover { background: #607d8b; }
+        button:active { transform: scale(0.96); }
+        
+        .credit {
+            position: absolute;
+            bottom: 15px;
+            right: 20px;
+            font-size: 0.8rem;
+            color: #78909c;
+            background: rgba(10, 13, 16, 0.85);
+            padding: 6px 14px;
+            border-radius: 6px;
+            pointer-events: none;
+            border: 1px solid rgba(255,255,255,0.04);
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="canvas-container"></div>
+
+    <div class="ui-panel">
+        <h2>Rock Mesh Generator</h2>
+        
+        <div class="control-group">
+            <label for="compositionMode">Layout</label>
+            <select id="compositionMode">
+                <option value="single">Single</option>
+                <option value="cluster3" selected>3 Rocks</option>
+                <option value="cluster5">5 Rocks</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label for="rockType">Type</label>
+            <select id="rockType">
+                <option value="cliff" selected>Mountain Cliff</option>
+                <option value="boulder">Boulder</option>
+                <option value="eroded">Eroded Cave</option>
+                <option value="pebble">River Pebble</option>
+                <option value="slate">Slate Stack</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label id="detailLabel" for="detail">Detail: 3</label>
+            <input type="range" id="detail" min="2" max="4" step="1" value="3">
+        </div>
+
+        <div class="control-group">
+            <label id="deformLabel" for="deform">Deform: 0.40</label>
+            <input type="range" id="deform" min="0.0" max="0.8" step="0.05" value="0.40">
+        </div>
+
+        <div class="control-group">
+            <label>Scale</label>
+            <div class="scale-inputs">
+                <div class="scale-row">
+                    <label for="scaleX">X:</label>
+                    <input type="range" id="scaleX" min="0.5" max="2.0" step="0.1" value="1.0">
+                </div>
+                <div class="scale-row">
+                    <label for="scaleZ">Y:</label>
+                    <input type="range" id="scaleZ" min="0.5" max="2.0" step="0.1" value="1.0">
+                </div>
+                <div class="scale-row">
+                    <label for="scaleY">Z:</label>
+                    <input type="range" id="scaleY" min="0.5" max="2.0" step="0.1" value="1.0">
+                </div>
+            </div>
+        </div>
+
+        <div class="btn-container">
+            <button id="generateBtn">Generate</button>
+            <button id="exportBtn">Export .OBJ</button>
+            <button id="resetCamBtn">Reset Camera</button>
+        </div>
+    </div>
+
+    <div class="credit">Left: Orbit | Right: Pan | Scroll: Zoom</div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <script>
+        // --- OBJExporter ---
+        THREE.OBJExporter = function () {};
+        THREE.OBJExporter.prototype = {
+            parse: function ( object ) {
+                let output = ''; let indexVertex = 0, indexNormal = 0;
+                const parseMesh = function ( mesh ) {
+                    const geometry = mesh.geometry; const vertices = geometry.attributes.position; const normals = geometry.attributes.normal;
+                    if ( vertices !== undefined ) {
+                        for ( let i = 0; i < vertices.count; i ++ ) {
+                            const vertex = new THREE.Vector3( vertices.getX( i ), vertices.getY( i ), vertices.getZ( i ) );
+                            vertex.applyMatrix4( mesh.matrixWorld );
+                            output += 'v ' + vertex.x + ' ' + vertex.y + ' ' + vertex.z + '\n';
+                        }
+                    }
+                    if ( normals !== undefined ) {
+                        for ( let i = 0; i < normals.count; i ++ ) {
+                            const normal = new THREE.Vector3( normals.getX( i ), normals.getY( i ), normals.getZ( i ) );
+                            const normalMatrix = new THREE.Matrix3().getNormalMatrix( mesh.matrixWorld );
+                            normal.applyMatrix3( normalMatrix ).normalize();
+                            output += 'vn ' + normal.x + ' ' + normal.y + ' ' + normal.z + '\n';
+                        }
+                    }
+                    for ( let i = 0; i < vertices.count; i += 3 ) {
+                        output += 'f ' + ( indexVertex + i + 1 ) + '//' + ( indexNormal + i + 1 ) + ' ' + ( indexVertex + i + 2 ) + '//' + ( indexNormal + i + 2 ) + ' ' + ( indexVertex + i + 3 ) + '//' + ( indexNormal + i + 3 ) + '\n';
+                    }
+                    indexVertex += vertices.count; indexNormal += normals.count;
+                };
+                object.traverse( function ( child ) { if ( child.isMesh && child.name !== "floor" ) parseMesh( child ); } );
+                return output;
+            }
+        };
+
+        // --- Camera Controls ---
+        let theta = 0.8, phi = Math.PI / 2.6, radius = 5.0;
+        const target = new THREE.Vector3(0, -0.3, 0); 
+        let isDragging = false, dragMode = "none"; let previousMousePosition = { x: 0, y: 0 };
+
+        function resetCamera() { theta = 0.8; phi = Math.PI / 2.6; radius = 5.0; target.set(0, -0.3, 0); updateCameraPosition(); }
+
+        // --- Setup Scene ---
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color("#080a0c"); 
+        scene.fog = new THREE.FogExp2("#080a0c", 0.04);
+
+        const camera = new THREE.PerspectiveCamera(38, window.innerWidth / window.innerHeight, 0.1, 100);
+        updateCameraPosition();
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.35; // เพิ่ม Dynamic Exposure ให้ภาพเคลียร์ขึ้น
+        container.appendChild(renderer.domElement);
+
+        window.addEventListener('contextmenu', e => e.preventDefault());
+
+        // --- Improved Lighting System (แก้ปัญหาแสงเงาขาดๆ) ---
+        // 1. ใช้ HemisphereLight เพื่อจำลองแสงแวดล้อมจากท้องฟ้ากระทบพื้นลาด ทำให้มิติซอกหินดูนุ่มนวลสมจริง
+        const hemiLight = new THREE.HemisphereLight(0xd6e8ff, 0x2a3a2a, 0.9);
+        scene.add(hemiLight);
+
+        // 2. ปรับมุมองศาไฟซันไลท์หลักให้ทำมุม 45 องศาเฉียงลงมา เพื่อเค้นเงาตกทอด (Cast Shadow) ให้ชัดเจนที่สุด
+        const sunLight = new THREE.DirectionalLight(0xfff8f0, 1.1); 
+        sunLight.position.set(4, 7, 3);
+        sunLight.castShadow = true;
+        sunLight.shadow.mapSize.width = 2048; 
+        sunLight.shadow.mapSize.height = 2048;
+        sunLight.shadow.bias = -0.0002;
+        sunLight.shadow.radius = 3; // ทำให้ขอบเงานุ่มนวลเป็นธรรมชาติ
+        sunLight.shadow.camera.near = 0.5;
+        sunLight.shadow.camera.far = 30;
+        sunLight.shadow.camera.left = -6;
+        sunLight.shadow.camera.right = 6;
+        sunLight.shadow.camera.top = 6;
+        sunLight.shadow.camera.bottom = -6;
+        scene.add(sunLight);
+
+        // 3. Fill Light เติมแสงด้านมืดให้ไม่ดำสนิท ลดความขาดๆ ของเงา
+        const fillLight = new THREE.DirectionalLight(0xc8d8f0, 0.45);
+        fillLight.position.set(-3, 3, -2);
+        scene.add(fillLight);
+
+        // 4. Rim Light ส่องตัดขอบจากด้านหลังเพื่อขับเน้นฟอร์มด้านมืดของก้อนหินให้เด้งหลุดจากพื้นหลัง
+        const rimLight = new THREE.DirectionalLight(0xb5d6ff, 0.35); 
+        rimLight.position.set(-5, 2, -4);
+        scene.add(rimLight);
+
+        // --- Ground ---
+        const GROUND_LEVEL = -1.0; 
+        const gridHelper = new THREE.GridHelper(14, 28, 0x2e7d32, 0x1a2327); 
+        gridHelper.position.y = GROUND_LEVEL; 
+        scene.add(gridHelper);
+
+        const floorGeo = new THREE.PlaneGeometry(40, 40);
+        const floorMat = new THREE.ShadowMaterial({ opacity: 0.55 }); 
+        const floor = new THREE.Mesh(floorGeo, floorMat);
+        floor.rotation.x = -Math.PI / 2; floor.position.y = GROUND_LEVEL; floor.name = "floor";
+        floor.receiveShadow = true; scene.add(floor);
+
+        // --- Generator Engine ---
+        let rockClusterGroup = new THREE.Group();
+        scene.add(rockClusterGroup);
+
+        let seedArray = [];
+        let currentArtisticScales = []; 
+        let currentLayoutPositions = []; 
+
+        function randomizeSeeds(count) {
+            seedArray = [];
+            for(let i=0; i<count; i++) {
+                seedArray.push({ x: Math.random()*50, y: Math.random()*50, z: Math.random()*50 });
+            }
+        }
+
+        function generateArtisticScales(count) {
+            let scales = [];
+            let mainX = 0.85 + Math.random() * 0.2;  
+            let mainY = 1.4 + Math.random() * 0.4; 
+            let mainZ = 0.85 + Math.random() * 0.2;
+            scales.push([mainX, mainY, mainZ]);
+
+            for (let i = 1; i < count; i++) {
+                let ratio = 0.5 + Math.random() * 0.3;
+                scales.push([mainX * ratio, mainY * (ratio * 0.8), mainZ * ratio]);
+            }
+            return scales;
+        }
+
+        function generateDynamicLayout(count) {
+            let positions = [];
+            positions.push([0, 0, Math.random() * Math.PI * 2]);
+            if (count === 1) return positions;
+
+            let baseAngle = Math.random() * Math.PI * 2;
+            let angleStep = (Math.PI * 2) / (count - 1);
+
+            for (let i = 1; i < count; i++) {
+                let currentAngle = baseAngle + (i - 1) * angleStep + (Math.random() * 0.3 - 0.15);
+                let currentRadius = 0.7 + Math.random() * 0.5;
+                positions.push([Math.cos(currentAngle) * currentRadius, Math.sin(currentAngle) * currentRadius, Math.random() * Math.PI * 2]);
+            }
+            return positions;
+        }
+
+
+        // ============================================================
+        // buildCliffGeometry — สร้างหิน Mountain Cliff จาก slab แนวตั้ง
+        // ประกอบด้วย: แกนกลาง + slab ข้างๆ เฉียงและขยับสุ่ม
+        // ทำให้ได้ฟอร์ม tall angular rock แบบในภาพ reference
+        // ============================================================
+        function buildCliffGeometry(seeds, detail, deform, rScale, mX, mY, mZ) {
+            // seeded pseudo-random
+            let rng = (function(s) {
+                let state = s * 9301 + 49297;
+                return function() { state = (state * 9301 + 49297) % 233280; return state / 233280; };
+            })(Math.floor(seeds.x * 1000 + seeds.y * 100 + seeds.z * 10));
+
+            const totalH = (1.7 + rng() * 0.7) * rScale[1] * mY;
+            const baseW  = (0.30 + rng() * 0.10) * rScale[0] * mX;
+            const baseD  = (0.24 + rng() * 0.08) * rScale[2] * mZ;
+            const geos   = [];
+
+            // ----- helper: BoxGeometry + vertex noise -----
+            function makeSlab(w, h, d, tx, ty, tz, rotY, tiltX, tiltZ, noiseAmp) {
+                let seg = detail + 1;
+                let g   = new THREE.BoxGeometry(w, h, d, seg, seg * 2, seg);
+                let euler = new THREE.Euler(tiltX, rotY, tiltZ);
+                let quat  = new THREE.Quaternion().setFromEuler(euler);
+                g.applyMatrix4(new THREE.Matrix4().compose(
+                    new THREE.Vector3(tx, ty, tz), quat, new THREE.Vector3(1,1,1)
+                ));
+                const pos = g.attributes.position;
+                const vv  = new THREE.Vector3();
+                for (let i = 0; i < pos.count; i++) {
+                    vv.fromBufferAttribute(pos, i);
+                    let nx = Math.sin(vv.x * 13.0 + seeds.z) * Math.cos(vv.y * 9.0  + seeds.x) * noiseAmp;
+                    let ny = Math.sin(vv.y * 17.0 + seeds.y) * Math.cos(vv.z * 11.0 + seeds.z) * noiseAmp * 0.3;
+                    let nz = Math.cos(vv.z * 13.0 + seeds.x) * Math.sin(vv.y * 9.0  + seeds.y) * noiseAmp;
+                    let chip = Math.sin(vv.x * 26.0 + seeds.y) * Math.cos(vv.z * 21.0 + seeds.z) * noiseAmp * 0.45;
+                    pos.setXYZ(i, vv.x + nx + chip, vv.y + ny, vv.z + nz + chip);
+                }
+                g.computeVertexNormals();
+                return g;
+            }
+
+            // ----- CORE: แกนกลาง 2 section (ล่างกว้าง, บนแคบ+เอียง) -----
+            let h1   = totalH * 0.55;
+            let h2   = totalH * 0.45;
+            let topW = baseW * (0.68 + rng() * 0.14);
+            let topD = baseD * (0.68 + rng() * 0.14);
+
+            geos.push(makeSlab(baseW, h1, baseD,
+                0, h1/2, 0,
+                0, (rng()-0.5)*0.03, (rng()-0.5)*0.02,
+                0.032 * deform));
+
+            let topTiltZ = (rng()-0.5) * 0.08;
+            let topTiltX = (rng()-0.5) * 0.05;
+            geos.push(makeSlab(topW, h2, topD,
+                (rng()-0.5)*baseW*0.15, h1 + h2/2, (rng()-0.5)*baseD*0.12,
+                (rng()-0.5)*0.08, topTiltX, topTiltZ,
+                0.038 * deform));
+
+            // ----- SIDE COLUMNS: ยึดติดกับแกนกลาง ไม่ลอย -----
+            // overlap X เข้าไปใน core เพื่อให้เชื่อมกัน
+            let numSide = 2 + Math.floor(rng() * 2); // 2-3 ชิ้น
+            for (let s = 0; s < numSide; s++) {
+                let side  = s % 2 === 0 ? 1 : -1;
+                let sw    = baseW * (0.14 + rng() * 0.16);
+                let sh    = totalH * (0.4 + rng() * 0.45);
+                let sd    = baseD * (0.85 + rng() * 0.3);
+
+                // X offset: แค่ครึ่งหนึ่งของ (baseW + sw) เพื่อให้ overlap เข้าไปในแกน
+                let overlapX = (baseW + sw) * 0.5 * 0.75;
+                let sOffX = side * overlapX;
+                // Y: เริ่มจากพื้น (sh/2) หรือสูงขึ้นเล็กน้อย
+                let sOffY = sh/2 + totalH * rng() * 0.08;
+                let sOffZ = (rng()-0.5) * baseD * 0.25;
+
+                // tilt เข้าหาแกน (ไม่เอียงออก)
+                let sTiltZ = side * -(rng() * 0.06);
+                let sTiltX = (rng()-0.5) * 0.05;
+                let sRotY  = (rng()-0.5) * 0.15;
+
+                geos.push(makeSlab(sw, sh, sd, sOffX, sOffY, sOffZ, sRotY, sTiltX, sTiltZ, 0.035 * deform));
+            }
+
+            // ----- SURFACE CHIPS: ชิ้นเล็กๆ แนบกับผิวหน้าของแกน -----
+            // ทำให้เห็นเป็นรอยแตกและชิ้นหินที่หลุดออกมาเล็กน้อย แต่ยังติดอยู่
+            let numChips = 2 + Math.floor(rng() * 3);
+            for (let c = 0; c < numChips; c++) {
+                let side  = c % 2 === 0 ? 1 : -1;
+                let cw    = baseW * (0.06 + rng() * 0.10);
+                let ch    = totalH  * (0.15 + rng() * 0.35);
+                let cd    = baseD  * (0.7  + rng() * 0.5);
+
+                // X: แนบกับขอบของแกน (ไม่ยื่นออกไปมาก)
+                let chipX = side * (baseW * 0.5 + cw * 0.4);
+                let chipY = ch/2 + totalH * (0.05 + rng() * 0.3);
+                // Z: อยู่ใกล้แกน ไม่ยื่นออกด้านหน้า
+                let chipZ = (rng()-0.5) * baseD * 0.3;
+
+                // tilt เล็กน้อย — เหมือนผิวถูกกะเทาะแต่ยังไม่หลุด
+                let chipTiltZ = side * (rng() * 0.08);
+                let chipTiltX = (rng()-0.5) * 0.06;
+
+                geos.push(makeSlab(cw, ch, cd, chipX, chipY, chipZ,
+                    (rng()-0.5)*0.1, chipTiltX, chipTiltZ, 0.04 * deform));
+            }
+
+            // ----- merge -----
+            let merged = THREE.BufferGeometryUtils
+                ? THREE.BufferGeometryUtils.mergeBufferGeometries(geos, false)
+                : mergeGeos(geos);
+            merged.computeVertexNormals();
+            merged.computeBoundingBox();
+            return merged;
+        }
+
+        // fallback merge ถ้าไม่มี BufferGeometryUtils
+        function mergeGeos(geos) {
+            let totalVerts = 0, totalIdx = 0;
+            geos.forEach(g => { g.computeVertexNormals(); totalVerts += g.attributes.position.count; totalIdx += g.index ? g.index.count : g.attributes.position.count; });
+            let positions = new Float32Array(totalVerts * 3);
+            let normals   = new Float32Array(totalVerts * 3);
+            let indices   = [];
+            let vOffset = 0, iOffset = 0;
+            geos.forEach(g => {
+                let p = g.attributes.position; let n = g.attributes.normal;
+                for (let i = 0; i < p.count; i++) {
+                    positions[(vOffset + i)*3]   = p.getX(i);
+                    positions[(vOffset + i)*3+1] = p.getY(i);
+                    positions[(vOffset + i)*3+2] = p.getZ(i);
+                    normals[(vOffset + i)*3]   = n.getX(i);
+                    normals[(vOffset + i)*3+1] = n.getY(i);
+                    normals[(vOffset + i)*3+2] = n.getZ(i);
+                }
+                if (g.index) {
+                    for (let i = 0; i < g.index.count; i++) indices.push(g.index.getX(i) + vOffset);
+                } else {
+                    for (let i = 0; i < p.count; i++) indices.push(i + vOffset);
+                }
+                vOffset += p.count;
+            });
+            let out = new THREE.BufferGeometry();
+            out.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            out.setAttribute('normal',   new THREE.BufferAttribute(normals, 3));
+            out.setIndex(indices);
+            out.computeBoundingBox();
+            return out;
+        }
+
+        function buildCluster() {
+            while(rockClusterGroup.children.length > 0){
+                let obj = rockClusterGroup.children[0];
+                rockClusterGroup.remove(obj);
+                obj.geometry.dispose();
+                obj.material.dispose();
+            }
+
+            const compMode = document.getElementById('compositionMode').value;
+            const rockType = document.getElementById('rockType').value;
+            const detail = parseInt(document.getElementById('detail').value);
+            const deform = parseFloat(document.getElementById('deform').value);
+            
+            let mX = parseFloat(document.getElementById('scaleX').value);
+            let mY = parseFloat(document.getElementById('scaleY').value);
+            let mZ = parseFloat(document.getElementById('scaleZ').value);
+
+            let count = compMode === 'single' ? 1 : (compMode === 'cluster3' ? 3 : 5);
+
+            if(seedArray.length < count) randomizeSeeds(count);
+            if(currentArtisticScales.length !== count) currentArtisticScales = generateArtisticScales(count);
+            if(currentLayoutPositions.length !== count) currentLayoutPositions = generateDynamicLayout(count);
+
+            currentLayoutPositions.forEach((transform, idx) => {
+                const seeds = seedArray[idx];
+                const rScale = currentArtisticScales[idx];
+
+                let geo, mat, mesh;
+
+                if (rockType === 'cliff') {
+                    // ============================================================
+                    // CLIFF: สร้างจาก slab หลายชิ้นมาประกอบกัน
+                    // แต่ละ slab = BoxGeometry บิดเฉียงและขยับเล็กน้อย
+                    // ============================================================
+                    geo = buildCliffGeometry(seeds, detail, deform, rScale, mX, mY, mZ);
+                    mat = new THREE.MeshStandardMaterial({
+                        color: new THREE.Color("#4a4f55"),
+                        roughness: 0.95,
+                        metalness: 0.0,
+                        flatShading: true
+                    });
+                } else {
+                    // ============================================================
+                    // OTHER TYPES: เหมือนเดิมทุกอย่าง
+                    // ============================================================
+                    geo = new THREE.IcosahedronGeometry(0.7, detail + 2);
+                    const pos = geo.attributes.position;
+                    const v = new THREE.Vector3();
+
+                    for (let i = 0; i < pos.count; i++) {
+                        v.fromBufferAttribute(pos, i);
+                        let n = 0;
+
+                        if (rockType === 'boulder') {
+                            n = Math.sin(v.x * 2.0 + seeds.x) * Math.cos(v.y * 2.0 + seeds.y) * Math.sin(v.z * 2.0) * 0.6;
+                        } else if (rockType === 'eroded') {
+                            let base = Math.sin(v.x * 3.0 + seeds.x) * Math.cos(v.y * 3.0 + seeds.y);
+                            let holes = Math.sin(v.x * 6.0 + seeds.z) * Math.cos(v.z * 6.0 + seeds.x);
+                            n = (base * 0.3) + (holes * holes * -0.4);
+                        } else if (rockType === 'pebble') {
+                            n = Math.sin(v.x * 1.5 + seeds.x) * Math.cos(v.y * 1.5 + seeds.y) * 0.2;
+                        } else if (rockType === 'slate') {
+                            n = Math.sin(v.y * 14.0 + seeds.y) * 0.35 + Math.cos(v.x * 2.0) * 0.1;
+                        }
+
+                        let noiseLayer = Math.sin(v.x * 24.0 + seeds.z) * Math.cos(v.y * 24.0 + seeds.y) * 0.03;
+                        v.addScaledVector(v.clone().normalize(), (n * deform) + noiseLayer);
+
+                        if (rockType === 'pebble') { v.y *= 0.4; v.x *= 1.4; v.z *= 1.2; }
+                        if (rockType === 'slate')  { v.y *= 0.3; v.x *= 1.3; v.z *= 1.3; }
+
+                        v.x *= rScale[0] * mX;
+                        v.y *= rScale[1] * mY;
+                        v.z *= rScale[2] * mZ;
+
+                        pos.setXYZ(i, v.x, v.y, v.z);
+                    }
+
+                    let useFlat = (rockType === 'slate' || rockType === 'eroded');
+                    mat = new THREE.MeshStandardMaterial({
+                        color: new THREE.Color("#4a4f55"),
+                        roughness: 0.95,
+                        metalness: 0.0,
+                        flatShading: useFlat
+                    });
+
+                    geo.computeVertexNormals();
+                    geo.computeBoundingBox();
+                }
+
+                mesh = new THREE.Mesh(geo, mat);
+                // ปรับแต่งคุณสมบัติผิววัสดุหินให้ตอบสนองแสงได้สมจริง ไม่สะท้อนแบบพลาสติก
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+
+                mesh.rotation.set(0, transform[2], 0);
+                mesh.position.set(transform[0], 0, transform[1]);
+
+                let boundingBoxMinY = geo.boundingBox.min.y;
+                mesh.position.y = GROUND_LEVEL - boundingBoxMinY;
+
+                rockClusterGroup.add(mesh);
+            });
+        }
+
+        function triggerNewGeneration() {
+            const compMode = document.getElementById('compositionMode').value;
+            let count = compMode === 'single' ? 1 : (compMode === 'cluster3' ? 3 : 5);
+            randomizeSeeds(count);
+            currentArtisticScales = generateArtisticScales(count); 
+            currentLayoutPositions = generateDynamicLayout(count); 
+            buildCluster();
+        }
+
+        function exportToOBJ() {
+            if (rockClusterGroup.children.length === 0) return;
+            const exporter = new THREE.OBJExporter();
+            const result = exporter.parse(rockClusterGroup);
+            const blob = new Blob([result], { type: 'text/plain' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `rock_mesh.obj`;
+            link.click();
+        }
+
+        function updateCameraPosition() {
+            camera.position.x = target.x + radius * Math.sin(phi) * Math.sin(theta);
+            camera.position.y = target.y + radius * Math.cos(phi);
+            camera.position.z = target.z + radius * Math.sin(phi) * Math.cos(theta);
+            camera.lookAt(target);
+        }
+
+        // --- Interaction ---
+        window.addEventListener('mousedown', (e) => {
+            if (e.target.tagName === 'CANVAS') {
+                isDragging = true; previousMousePosition = { x: e.clientX, y: e.clientY };
+                dragMode = (e.button === 2 || e.shiftKey) ? "pan" : "orbit";
+            }
+        });
+        window.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            const deltaX = e.clientX - previousMousePosition.x; const deltaY = e.clientY - previousMousePosition.y;
+            if (dragMode === "orbit") {
+                theta -= deltaX * 0.004; phi = Math.max(0.1, Math.min(Math.PI / 2 - 0.05, phi - deltaY * 0.004)); 
+            } else if (dragMode === "pan") {
+                const offset = new THREE.Vector3().copy(camera.position).sub(target); const panFactor = offset.length() * 0.0015;
+                const vRight = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+                const vUp = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
+                target.addScaledVector(vRight, -deltaX * panFactor); target.addScaledVector(vUp, deltaY * panFactor);
+            }
+            previousMousePosition = { x: e.clientX, y: e.clientY }; updateCameraPosition();
+        });
+        window.addEventListener('mouseup', () => isDragging = false);
+        window.addEventListener('wheel', (e) => { radius = Math.max(2.5, Math.min(12, radius + e.deltaY * 0.005)); updateCameraPosition(); });
+
+        document.getElementById('generateBtn').addEventListener('click', triggerNewGeneration);
+        document.getElementById('compositionMode').addEventListener('change', triggerNewGeneration);
+        document.getElementById('rockType').addEventListener('change', buildCluster);
+        document.getElementById('exportBtn').addEventListener('click', exportToOBJ);
+        document.getElementById('resetCamBtn').addEventListener('click', resetCamera);
+        
+        document.getElementById('detail').addEventListener('input', (e) => { document.getElementById('detailLabel').innerText = `Detail: ${e.target.value}`; buildCluster(); });
+        document.getElementById('deform').addEventListener('input', (e) => { document.getElementById('deformLabel').innerText = `Deform: ${e.target.value}`; buildCluster(); });
+        ['scaleX', 'scaleY', 'scaleZ'].forEach(id => { document.getElementById(id).addEventListener('input', buildCluster); });
+        window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+
+        triggerNewGeneration();
+        animate();
+        function animate() { requestAnimationFrame(animate); renderer.render(scene, camera); }
+    </script>
+</body>
+</html>
